@@ -2,42 +2,29 @@ import os
 import psycopg2
 
 conn = psycopg2.connect(
-        host="localhost",
-        database="db",
-        user="postgres",
-        password="1ZakonOma")
+    host="localhost", database="db", user="postgres", password="1ZakonOma"
+)
 
 
 cur = conn.cursor()
 
-cur.execute('DROP TABLE IF EXISTS books;')
-cur.execute('CREATE TABLE books (id serial PRIMARY KEY,'
-                                 'title varchar (150) NOT NULL,'
-                                 'author varchar (50) NOT NULL,'
-                                 'pages_num integer NOT NULL,'
-                                 'review text,'
-                                 'date_added date DEFAULT CURRENT_TIMESTAMP);'
-                                 )
+cur.execute("DROP TABLE IF EXISTS machine;")
+cur.execute(
+    "CREATE TABLE machine (id serial PRIMARY KEY,"
+    "Дата date NOT NULL,"
+    "Название varchar (150) NOT NULL,"
+    "Хозяйство varchar (150) NOT NULL);"
+)
 
-
-cur.execute('INSERT INTO books (title, author, pages_num, review)'
-            'VALUES (%s, %s, %s, %s)',
-            ('A Tale of Two Cities',
-             'Charles Dickens',
-             489,
-             'A great classic!')
-            )
-
-
-cur.execute('INSERT INTO books (title, author, pages_num, review)'
-            'VALUES (%s, %s, %s, %s)',
-            ('Anna Karenina',
-             'Leo Tolstoy',
-             864,
-             'Another great classic!')
-            )
+cur.execute("DROP TABLE IF EXISTS volume;")
+cur.execute(
+    "CREATE TABLE volume (id serial PRIMARY KEY,"
+    "Дата date NOT NULL,"
+    "Площадь decimal NOT NULL,"
+    "Объем decimal NOT NULL,"
+    "Хозяйство varchar (150) NOT NULL);"
+)
 
 conn.commit()
-
 cur.close()
 conn.close()

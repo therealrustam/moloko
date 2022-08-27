@@ -1,7 +1,7 @@
 import csv
 
 import psycopg2
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -38,11 +38,43 @@ def index():
     """
     )
     datas = cur.fetchall()
+    cur.execute(
+        """
+        SELECT Sum(v.Объем)
+        FROM volume v
+        WHERE v.Хозяйство = 'zarya'
+    """
+    )
+    zarya_volume = float(cur.fetchall()[0][0])
+    cur.execute(
+        """
+        SELECT Sum(v.Объем)
+        FROM volume v
+        WHERE v.Хозяйство = 'druzhba'
+    """
+    )
+    druzhba_volume = float(cur.fetchall()[0][0])
+    cur.execute(
+        """
+        SELECT Sum(v.Объем)
+        FROM volume v
+        WHERE v.Хозяйство = 'progres'
+    """
+    )
+    progres_volume = float(cur.fetchall()[0][0])
     cur.close()
     conn.close()
     labels = [str(row[0]) for row in datas]
     values = [float(row[2]) for row in datas]
-    return render_template("index.html", labels=labels, values=values, datas=data)
+    return render_template(
+        "index.html",
+        labels=labels,
+        values=values,
+        datas=data,
+        zarya_volume=zarya_volume,
+        progres_volume=progres_volume,
+        druzhba_volume=druzhba_volume,
+    )
 
 
 @app.route("/zarya")
@@ -64,6 +96,7 @@ def zarya():
     labels = [str(row[0]) for row in datas]
     values = [float(row[4]) for row in datas]
     return render_template("index.html", labels=labels, values=values, datas=datas)
+
 
 @app.route("/druzhba")
 def druzhba():
@@ -155,7 +188,7 @@ def create_and_clean(cur, conn):
     )
     conn.commit()
 
-
+@app.route("/get")
 def get_table():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -187,6 +220,7 @@ def get_table():
     for row in table:
         ws.append(row)
     wb.save("Итог.xlsx")
+    return redirect('/')
 
 
 load()

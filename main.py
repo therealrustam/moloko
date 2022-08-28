@@ -1,8 +1,13 @@
+"""
+Веб-приложение для обработки csv файлов и
+вывода данных на Дашборд.
+"""
+
 import csv
 from datetime import datetime
 
 import psycopg2
-from flask import Flask, redirect, render_template, request, send_file
+from flask import Flask, render_template, request, send_file
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -15,6 +20,9 @@ MEMORY = {
 
 
 def get_db_connection():
+    """
+    Метод создания подключения к БД.
+    """
     conn = psycopg2.connect(
         host="localhost", database="db", user="postgres", password="1ZakonOma"
     )
@@ -23,6 +31,10 @@ def get_db_connection():
 
 @app.route("/", methods=("GET", "POST"))
 def index():
+    """
+    Метод основной страницы веб-приложения,
+    где отображаются данных из csv файлов.
+    """
     load()
     conn = get_db_connection()
     cur = conn.cursor()
@@ -127,6 +139,9 @@ def index():
 
 @app.route("/zarya", methods=("GET", "POST"))
 def zarya():
+    """
+    Метод отображения данных для хозяйства "Заря".
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
@@ -191,6 +206,9 @@ def zarya():
 
 @app.route("/druzhba", methods=("GET", "POST"))
 def druzhba():
+    """
+    Метод отображения данных для хозяйства "Дружба".
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
@@ -255,6 +273,9 @@ def druzhba():
 
 @app.route("/progres", methods=("GET", "POST"))
 def progres():
+    """
+    Метод отображения данных для хозяйства "Прогресс".
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
@@ -318,6 +339,9 @@ def progres():
 
 
 def load():
+    """
+    Метод загрузки данных из csv файлов в БД.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     create_and_clean(cur, conn)
@@ -347,6 +371,9 @@ def load():
 
 
 def create_and_clean(cur, conn):
+    """
+    Метод создания и удаления таблиц в БД.
+    """
     cur.execute("DROP TABLE IF EXISTS machine;")
     cur.execute(
         "CREATE TABLE machine (id serial PRIMARY KEY,"
@@ -368,6 +395,10 @@ def create_and_clean(cur, conn):
 
 @app.route("/get")
 def get_table():
+    """
+    Метод для формирования xlsx файла и
+    его загрузки.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(

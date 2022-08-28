@@ -1,7 +1,8 @@
 import csv
+from datetime import datetime
 
 import psycopg2
-from flask import Flask, redirect, render_template, request
+from flask import Flask, redirect, render_template, request, send_file
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -397,5 +398,7 @@ def get_table():
     ws = wb.active
     for row in table:
         ws.append(row)
-    wb.save("Итог.xlsx")
-    return redirect("/")
+    time = str(datetime.now()).replace(".", "-").replace(":", "-")
+    file_name = "Итог " + time + ".xlsx"
+    wb.save(file_name)
+    return send_file("./" + file_name)

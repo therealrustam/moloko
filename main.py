@@ -6,6 +6,11 @@ from openpyxl import Workbook
 
 app = Flask(__name__)
 FARMS = ["zarya", "progres", "druzhba"]
+MEMORY = {
+    "max": 0,
+    "min": 0,
+    "farms": [],
+}
 
 
 def get_db_connection():
@@ -103,6 +108,9 @@ def index():
     values = [float(row[2]) for row in datas]
     label_graph = [str(row[0]) for row in data_graph]
     value_graph = [float(row[2]) for row in data_graph]
+    MEMORY["max"] = date_to
+    MEMORY["min"] = date_from
+    MEMORY["farms"] = ["'zarya'", "'progres'", "'druzhba'"]
     return render_template(
         "index.html",
         labels=labels,
@@ -167,6 +175,9 @@ def zarya():
     value_graph = [float(row[4]) for row in datas]
     cur.close()
     conn.close()
+    MEMORY["max"] = date_to
+    MEMORY["min"] = date_from
+    MEMORY["farms"] = ["'zarya'"]
     return render_template(
         "farm.html",
         label_graph=label_graph,
@@ -228,6 +239,9 @@ def druzhba():
     value_graph = [float(row[4]) for row in datas]
     cur.close()
     conn.close()
+    MEMORY["max"] = date_to
+    MEMORY["min"] = date_from
+    MEMORY["farms"] = ["'druzhba'"]
     return render_template(
         "farm.html",
         label_graph=label_graph,
@@ -289,6 +303,9 @@ def progres():
     value_graph = [float(row[4]) for row in datas]
     cur.close()
     conn.close()
+    MEMORY["max"] = date_to
+    MEMORY["min"] = date_from
+    MEMORY["farms"] = ["'progres'"]
     return render_template(
         "farm.html",
         label_graph=label_graph,
@@ -357,9 +374,10 @@ def get_table():
         SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
         FROM volume v
         JOIN machine m ON v.Дата = m.Дата
-        WHERE v.Хозяйство = m.Хозяйство
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство IN (%s) AND v.Дата <= '%s' AND v.Дата >= '%s'
         Order by v.Дата;
     """
+        % (",".join(MEMORY["farms"]), MEMORY["max"], MEMORY["min"])
     )
     data = cur.fetchall()
     cur.close()

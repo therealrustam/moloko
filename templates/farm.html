@@ -88,10 +88,6 @@
                 <div class="w-75">
                     <canvas class="my-4 w-100" id="myChart" width="900" height="380"></canvas>
                 </div>
-                <h2 class="h2">Диаграмма выполненных работ по хозяйствам</h2>
-                <div class="w-25">
-                    <canvas class="my-4 w-100" id="myPie" width="450" height="190"></canvas>
-                </div>
                 <h2 class="h2">Итоговая таблица</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-sm">
@@ -150,27 +146,6 @@
         options: {
             responsive: false
         }
-        });
-        var ptx = document.getElementById("myPie").getContext("2d");
-        var config = new Chart(ptx, {
-            type: 'pie',
-            data: {
-                labels: [
-                    'Заря',
-                    'Дружба',
-                    'Прогресс'
-                ],
-                datasets: [{
-                    label: 'My First Dataset',
-                    data: [{{ zarya_volume }}, {{ druzhba_volume }}, {{ progres_volume }}],
-        backgroundColor: [
-            'rgb(255, 99, 132)',
-            'rgb(54, 162, 235)',
-            'rgb(255, 205, 86)'
-        ],
-            hoverOffset: 4
-                }]
-            },
         });
     </script>
 </body>

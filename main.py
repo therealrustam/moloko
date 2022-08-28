@@ -1,7 +1,7 @@
 import csv
 
 import psycopg2
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, redirect, render_template, request, url_for
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -15,18 +15,39 @@ def get_db_connection():
     return conn
 
 
-@app.route("/")
+@app.route("/", methods=("GET", "POST"))
 def index():
+    load()
     conn = get_db_connection()
     cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT MAX(v.Дата), MIN(v.Дата)
+        FROM volume v
+            """
+    )
+    data = cur.fetchall()
+    date_to_init = data[0][0]
+    date_from_init = data[0][1]
+    if request.method == "POST":
+        date_to = request.form["to"]
+        date_from = request.form["from"]
+        if not date_to:
+            date_to = date_to_init
+        if not date_from:
+            date_from = date_from_init
+    else:
+        date_to = date_to_init
+        date_from = date_from_init
     cur.execute(
         """
         SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
         FROM volume v
         JOIN machine m ON v.Дата = m.Дата
-        WHERE v.Хозяйство = m.Хозяйство
+        WHERE v.Хозяйство = m.Хозяйство AND v.Дата <= '%s' AND v.Дата >= '%s'
         ORDER BY v.Дата;
     """
+        % (date_to, date_from)
     )
     data = cur.fetchall()
     cur.execute(
@@ -40,32 +61,48 @@ def index():
     datas = cur.fetchall()
     cur.execute(
         """
+        SELECT v.Дата, SUM(v.Площадь), SUM(v.Объем)
+        FROM volume v
+        WHERE v.Дата <= '%s' AND v.Дата >= '%s'
+        GROUP BY v.Дата
+        ORDER BY v.Дата;
+    """
+        % (date_to, date_from)
+    )
+    data_graph = cur.fetchall()
+    cur.execute(
+        """
         SELECT Sum(v.Объем)
         FROM volume v
-        WHERE v.Хозяйство = 'zarya'
+        WHERE v.Хозяйство = 'zarya' AND v.Дата <= '%s' AND v.Дата >= '%s'
     """
+        % (date_to, date_from)
     )
     zarya_volume = float(cur.fetchall()[0][0])
     cur.execute(
         """
         SELECT Sum(v.Объем)
         FROM volume v
-        WHERE v.Хозяйство = 'druzhba'
+        WHERE v.Хозяйство = 'druzhba' AND v.Дата <= '%s' AND v.Дата >= '%s'
     """
+        % (date_to, date_from)
     )
     druzhba_volume = float(cur.fetchall()[0][0])
     cur.execute(
         """
         SELECT Sum(v.Объем)
         FROM volume v
-        WHERE v.Хозяйство = 'progres'
-    """
+        WHERE v.Хозяйство = 'progres' AND v.Дата <= '%s' AND v.Дата >= '%s'
+        """
+        % (date_to, date_from)
     )
     progres_volume = float(cur.fetchall()[0][0])
     cur.close()
     conn.close()
     labels = [str(row[0]) for row in datas]
     values = [float(row[2]) for row in datas]
+    label_graph = [str(row[0]) for row in data_graph]
+    value_graph = [float(row[2]) for row in data_graph]
     return render_template(
         "index.html",
         labels=labels,
@@ -74,70 +111,192 @@ def index():
         zarya_volume=zarya_volume,
         progres_volume=progres_volume,
         druzhba_volume=druzhba_volume,
+        label_graph=label_graph,
+        value_graph=value_graph,
     )
 
 
-@app.route("/zarya")
+@app.route("/zarya", methods=("GET", "POST"))
 def zarya():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
         """
+        SELECT MAX(v.Дата), MIN(v.Дата)
+        FROM volume v
+        WHERE v.Хозяйство = 'zarya'
+        """
+    )
+    data = cur.fetchall()
+    date_to_init = data[0][0]
+    date_from_init = data[0][1]
+    if request.method == "POST":
+        date_to = request.form["to"]
+        date_from = request.form["from"]
+        if not date_to:
+            date_to = date_to_init
+        if not date_from:
+            date_from = date_from_init
+    else:
+        date_to = date_to_init
+        date_from = date_from_init
+    cur.execute(
+        """
         SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
         FROM volume v
         JOIN machine m ON v.Дата = m.Дата
-        WHERE v.Хозяйство = m.Хозяйство and v.Хозяйство = 'zarya'
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'zarya'
         ORDER BY v.Дата;
-    """
+        """
     )
     datas = cur.fetchall()
-    cur.close()
-    conn.close()
     labels = [str(row[0]) for row in datas]
     values = [float(row[4]) for row in datas]
-    return render_template("index.html", labels=labels, values=values, datas=datas)
+    cur.execute(
+        """
+        SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
+        FROM volume v
+        JOIN machine m ON v.Дата = m.Дата
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'zarya' AND v.Дата <= '%s' AND v.Дата >= '%s'
+        ORDER BY v.Дата;
+        """
+        % (date_to, date_from)
+    )
+    datas = cur.fetchall()
+    label_graph = [str(row[0]) for row in datas]
+    value_graph = [float(row[4]) for row in datas]
+    cur.close()
+    conn.close()
+    return render_template(
+        "farm.html",
+        label_graph=label_graph,
+        value_graph=value_graph,
+        datas=datas,
+        labels=labels,
+        values=values,
+    )
 
 
-@app.route("/druzhba")
+@app.route("/druzhba", methods=("GET", "POST"))
 def druzhba():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
+        SELECT MAX(v.Дата), MIN(v.Дата)
         FROM volume v
-        JOIN machine m ON v.Дата = m.Дата
-        WHERE v.Хозяйство = m.Хозяйство and v.Хозяйство = 'druzhba'
-        ORDER BY v.Дата;
-    """
+        WHERE v.Хозяйство = 'druzhba'
+        """
     )
-    datas = cur.fetchall()
-    cur.close()
-    conn.close()
-    labels = [str(row[0]) for row in datas]
-    values = [float(row[4]) for row in datas]
-    return render_template("index.html", labels=labels, values=values, datas=datas)
-
-
-@app.route("/progres")
-def progres():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    data = cur.fetchall()
+    date_to_init = data[0][0]
+    date_from_init = data[0][1]
+    if request.method == "POST":
+        date_to = request.form["to"]
+        date_from = request.form["from"]
+        if not date_to:
+            date_to = date_to_init
+        if not date_from:
+            date_from = date_from_init
+    else:
+        date_to = date_to_init
+        date_from = date_from_init
     cur.execute(
         """
         SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
         FROM volume v
         JOIN machine m ON v.Дата = m.Дата
-        WHERE v.Хозяйство = m.Хозяйство and v.Хозяйство = 'progres'
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'druzhba'
+        ORDER BY v.Дата;
+        """
+    )
+    datas = cur.fetchall()
+    labels = [str(row[0]) for row in datas]
+    values = [float(row[4]) for row in datas]
+    cur.execute(
+        """
+        SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
+        FROM volume v
+        JOIN machine m ON v.Дата = m.Дата
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'druzhba' AND v.Дата <= '%s' AND v.Дата >= '%s'
+        ORDER BY v.Дата;
+        """
+        % (date_to, date_from)
+    )
+    datas = cur.fetchall()
+    label_graph = [str(row[0]) for row in datas]
+    value_graph = [float(row[4]) for row in datas]
+    cur.close()
+    conn.close()
+    return render_template(
+        "farm.html",
+        label_graph=label_graph,
+        value_graph=value_graph,
+        datas=datas,
+        labels=labels,
+        values=values,
+    )
+
+
+@app.route("/progres", methods=("GET", "POST"))
+def progres():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT MAX(v.Дата), MIN(v.Дата)
+        FROM volume v
+        WHERE v.Хозяйство = 'progres'
+        """
+    )
+    data = cur.fetchall()
+    date_to_init = data[0][0]
+    date_from_init = data[0][1]
+    if request.method == "POST":
+        date_to = request.form["to"]
+        date_from = request.form["from"]
+        if not date_to:
+            date_to = date_to_init
+        if not date_from:
+            date_from = date_from_init
+    else:
+        date_to = date_to_init
+        date_from = date_from_init
+    cur.execute(
+        """
+        SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
+        FROM volume v
+        JOIN machine m ON v.Дата = m.Дата
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'progres'
         ORDER BY v.Дата;
     """
     )
     datas = cur.fetchall()
-    cur.close()
-    conn.close()
     labels = [str(row[0]) for row in datas]
     values = [float(row[4]) for row in datas]
-    return render_template("index.html", labels=labels, values=values, datas=datas)
+    cur.execute(
+        """
+        SELECT v.Дата, m.Техника, m.Номер, v.Площадь, v.Объем, v.Хозяйство
+        FROM volume v
+        JOIN machine m ON v.Дата = m.Дата
+        WHERE v.Хозяйство = m.Хозяйство AND v.Хозяйство = 'progres' AND v.Дата <= '%s' AND v.Дата >= '%s'
+        ORDER BY v.Дата;
+        """
+        % (date_to, date_from)
+    )
+    datas = cur.fetchall()
+    label_graph = [str(row[0]) for row in datas]
+    value_graph = [float(row[4]) for row in datas]
+    cur.close()
+    conn.close()
+    return render_template(
+        "farm.html",
+        label_graph=label_graph,
+        value_graph=value_graph,
+        datas=datas,
+        labels=labels,
+        values=values,
+    )
 
 
 def load():
@@ -188,6 +347,7 @@ def create_and_clean(cur, conn):
     )
     conn.commit()
 
+
 @app.route("/get")
 def get_table():
     conn = get_db_connection()
@@ -220,8 +380,4 @@ def get_table():
     for row in table:
         ws.append(row)
     wb.save("Итог.xlsx")
-    return redirect('/')
-
-
-load()
-get_table()
+    return redirect("/")

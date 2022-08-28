@@ -1,7 +1,7 @@
 import csv
 
 import psycopg2
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request
 from openpyxl import Workbook
 
 app = Flask(__name__)
